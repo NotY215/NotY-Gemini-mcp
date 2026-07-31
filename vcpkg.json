@@ -1,0 +1,19 @@
+{
+  "name": "noty-gemini-mcp",
+  "version": "1.0.0",
+  "description": "NotY-Gemini-MCP - AI Coding Assistant",
+  "homepage": "https://github.com/NotY215/NotY-Gemini-mcp",
+  "dependencies": [
+    "boost-beast",
+    "boost-asio",
+    "boost-filesystem",
+    "boost-json",
+    "boost-program-options",
+    "boost-property-tree",
+    "openssl",
+    "curl",
+    "nlohmann-json",
+    "fmt",
+    "spdlog"
+  ]
+}
