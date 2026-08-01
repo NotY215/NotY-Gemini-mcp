@@ -3,10 +3,6 @@
 #include <string>
 #include <functional>
 #include <memory>
-#include <webview2.h>
-#include <wrl.h>
-
-using namespace Microsoft::WRL;
 
 class AppWindow {
 private:
@@ -15,16 +11,15 @@ private:
     int height;
     std::string title;
     std::string iconPath;
-    
-    ComPtr<ICoreWebView2> webView;
-    ComPtr<ICoreWebView2Controller> webViewController;
-    
+    bool isVisible;
+    HWND browserHwnd;
+
     std::function<void()> onCloseCallback;
     std::function<void(const std::string&)> onWebMessageCallback;
-    std::function<std::string(const std::string&)> webHandler;
 
     static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
-    void initializeWebView();
+    void createBrowserControl();
+    void injectScript(const std::string& script);
 
 public:
     AppWindow(int w, int h);
@@ -37,9 +32,9 @@ public:
     void setTitle(const std::string& title);
     void setIcon(const std::string& path);
     HWND getHandle() const { return hwnd; }
-    
-    void setWebHandler(std::function<std::string(const std::string&)> handler);
+
     void setOnClose(std::function<void()> callback);
     void setOnWebMessage(std::function<void(const std::string&)> callback);
     void sendToWeb(const std::string& message);
+    void navigateTo(const std::string& url);
 };

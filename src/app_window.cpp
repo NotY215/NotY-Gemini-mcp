@@ -1,42 +1,53 @@
 #include "app_window.h"
-#include <thread>
-#include <chrono>
-#include <iostream>
+#include <windows.h>
+#include <commctrl.h>
+#include <exdisp.h>
+#include <exdispid.h>
+#include <mshtml.h>
+#include <atlbase.h>
+#include <atlwin.h>
+#include <string>
+#include <sstream>
+#include <shellapi.h>
 
-AppWindow::AppWindow(int w, int h) 
-    : hwnd(nullptr), width(w), height(h), title("NotY-Gemini-MCP") {
+// Global reference for COM
+static CComModule _Module;
+
+AppWindow::AppWindow(int w, int h)
+    : hwnd(nullptr), width(w), height(h), title("NotY-Gemini-MCP"),
+    isVisible(false), browserHwnd(nullptr) {
+    CoInitialize(NULL);
 }
 
 AppWindow::~AppWindow() {
-    if (webView) {
-        webView->Close();
-    }
     if (hwnd) {
         DestroyWindow(hwnd);
     }
+    CoUninitialize();
 }
 
 bool AppWindow::create() {
-    WNDCLASSEX wc = {0};
+    WNDCLASSEX wc = { 0 };
     wc.cbSize = sizeof(WNDCLASSEX);
     wc.lpfnWndProc = WindowProc;
     wc.hInstance = GetModuleHandle(NULL);
     wc.lpszClassName = L"NotYGeminiMCPWindow";
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    
+    wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+
     if (!RegisterClassEx(&wc)) {
         return false;
     }
 
-    RECT rect = {0, 0, width, height};
+    RECT rect = { 0, 0, width, height };
     AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
 
     hwnd = CreateWindowEx(
-        0,
+        WS_EX_APPWINDOW,
         L"NotYGeminiMCPWindow",
         std::wstring(title.begin(), title.end()).c_str(),
-        WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+        WS_OVERLAPPEDWINDOW | WS_VISIBLE | WS_CLIPCHILDREN,
         CW_USEDEFAULT, CW_USEDEFAULT,
         rect.right - rect.left,
         rect.bottom - rect.top,
@@ -49,86 +60,94 @@ bool AppWindow::create() {
         return false;
     }
 
-    // Initialize WebView2
-    initializeWebView();
-
-    // Load HTML
-    webView->Navigate(L"http://localhost:31415/");
+    // Create browser control
+    createBrowserControl();
+    isVisible = true;
 
     return true;
 }
 
-void AppWindow::initializeWebView() {
-    auto webViewEnvironmentOptions = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
-    
-    CreateCoreWebView2EnvironmentWithOptions(
-        nullptr, nullptr, webViewEnvironmentOptions.Get(),
-        Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
-            [this](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
-                env->CreateCoreWebView2Controller(
-                    hwnd,
-                    Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
-                        [this](HRESULT result, ICoreWebView2Controller* controller) -> HRESULT {
-                            webViewController = controller;
-                            webViewController->get_CoreWebView2(&webView);
-                            
-                            // Set up web message handler
-                            webView->add_WebMessageReceived(
-                                Callback<ICoreWebView2WebMessageReceivedEventHandler>(
-                                    [this](ICoreWebView2* sender, ICoreWebView2WebMessageReceivedEventArgs* args) -> HRESULT {
-                                        LPWSTR message = nullptr;
-                                        args->TryGetWebMessageAsString(&message);
-                                        if (message && onWebMessageCallback) {
-                                            std::wstring wstr(message);
-                                            std::string str(wstr.begin(), wstr.end());
-                                            onWebMessageCallback(str);
-                                        }
-                                        return S_OK;
-                                    }
-                                ).Get(),
-                                nullptr
-                            );
+void AppWindow::createBrowserControl() {
+    // Initialize ATL
+    _Module.Init(NULL, GetModuleHandle(NULL));
 
-                            // Set up navigation handler
-                            webView->add_NavigationCompleted(
-                                Callback<ICoreWebView2NavigationCompletedEventHandler>(
-                                    [this](ICoreWebView2* sender, ICoreWebView2NavigationCompletedEventArgs* args) -> HRESULT {
-                                        // Enable script
-                                        webView->AddScriptToExecuteOnDocumentCreated(
-                                            L"window.electronAPI = { postMessage: (msg) => window.chrome.webview.postMessage(msg) };",
-                                            nullptr
-                                        );
-                                        return S_OK;
-                                    }
-                                ).Get(),
-                                nullptr
-                            );
+    // Create WebBrowser control
+    RECT rect;
+    GetClientRect(hwnd, &rect);
 
-                            // Resize web view to fill window
-                            RECT bounds;
-                            GetClientRect(hwnd, &bounds);
-                            webViewController->put_Bounds(bounds);
-                            
-                            return S_OK;
-                        }
-                    ).Get()
-                );
-                return S_OK;
-            }
-        ).Get()
+    // Use AtlAxWin to host WebBrowser control
+    browserHwnd = CreateWindow(
+        L"AtlAxWin140",
+        L"Shell.Explorer.2",
+        WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
+        rect.left, rect.top,
+        rect.right - rect.left,
+        rect.bottom - rect.top,
+        hwnd,
+        NULL,
+        GetModuleHandle(NULL),
+        NULL
     );
+
+    if (browserHwnd) {
+        // Navigate to local server
+        navigateTo("http://localhost:31415/");
+    }
+}
+
+void AppWindow::navigateTo(const std::string& url) {
+    if (browserHwnd) {
+        CComPtr<IUnknown> unknown;
+        if (SUCCEEDED(AtlAxGetControl(browserHwnd, &unknown))) {
+            CComPtr<IWebBrowser2> webBrowser;
+            unknown->QueryInterface(&webBrowser);
+            if (webBrowser) {
+                CComVariant vUrl(url.c_str());
+                webBrowser->Navigate2(&vUrl, &CComVariant(), &CComVariant(), &CComVariant(), &CComVariant());
+            }
+        }
+    }
+}
+
+void AppWindow::injectScript(const std::string& script) {
+    if (browserHwnd) {
+        CComPtr<IUnknown> unknown;
+        if (SUCCEEDED(AtlAxGetControl(browserHwnd, &unknown))) {
+            CComPtr<IWebBrowser2> webBrowser;
+            unknown->QueryInterface(&webBrowser);
+            if (webBrowser) {
+                CComPtr<IDispatch> docDispatch;
+                webBrowser->get_Document(&docDispatch);
+                if (docDispatch) {
+                    CComPtr<IHTMLDocument2> doc;
+                    docDispatch->QueryInterface(&doc);
+                    if (doc) {
+                        CComPtr<IHTMLWindow2> window;
+                        doc->get_parentWindow(&window);
+                        if (window) {
+                            CComBSTR bstrScript(script.c_str());
+                            CComVariant result;
+                            window->execScript(bstrScript, CComBSTR(L"JavaScript"), &result);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 void AppWindow::show() {
     if (hwnd) {
         ShowWindow(hwnd, SW_SHOW);
         SetForegroundWindow(hwnd);
+        isVisible = true;
     }
 }
 
 void AppWindow::hide() {
     if (hwnd) {
         ShowWindow(hwnd, SW_HIDE);
+        isVisible = false;
     }
 }
 
@@ -162,10 +181,6 @@ void AppWindow::setIcon(const std::string& path) {
     }
 }
 
-void AppWindow::setWebHandler(std::function<std::string(const std::string&)> handler) {
-    webHandler = handler;
-}
-
 void AppWindow::setOnClose(std::function<void()> callback) {
     onCloseCallback = callback;
 }
@@ -175,44 +190,50 @@ void AppWindow::setOnWebMessage(std::function<void(const std::string&)> callback
 }
 
 void AppWindow::sendToWeb(const std::string& message) {
-    if (webView) {
-        std::wstring wmessage(message.begin(), message.end());
-        webView->PostWebMessageAsString(wmessage.c_str());
-    }
+    std::string script =
+        "if (window.receiveMessage) { window.receiveMessage('" +
+        message + "'); }";
+    injectScript(script);
 }
 
 LRESULT CALLBACK AppWindow::WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     AppWindow* app = nullptr;
-    
+
     if (msg == WM_NCCREATE) {
         CREATESTRUCT* cs = reinterpret_cast<CREATESTRUCT*>(lParam);
         app = reinterpret_cast<AppWindow*>(cs->lpCreateParams);
         SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(app));
-    } else {
+    }
+    else {
         app = reinterpret_cast<AppWindow*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
     }
 
     if (app) {
         switch (msg) {
-            case WM_SIZE:
-                if (app->webViewController) {
-                    RECT bounds;
-                    GetClientRect(hwnd, &bounds);
-                    app->webViewController->put_Bounds(bounds);
-                }
-                break;
-                
-            case WM_CLOSE:
-                if (app->onCloseCallback) {
-                    app->onCloseCallback();
-                } else {
-                    DestroyWindow(hwnd);
-                }
-                return 0;
-                
-            case WM_DESTROY:
-                PostQuitMessage(0);
-                return 0;
+        case WM_SIZE:
+            if (app->browserHwnd) {
+                RECT rect;
+                GetClientRect(hwnd, &rect);
+                SetWindowPos(app->browserHwnd, NULL,
+                    rect.left, rect.top,
+                    rect.right - rect.left,
+                    rect.bottom - rect.top,
+                    SWP_NOZORDER);
+            }
+            break;
+
+        case WM_CLOSE:
+            if (app->onCloseCallback) {
+                app->onCloseCallback();
+            }
+            else {
+                DestroyWindow(hwnd);
+            }
+            return 0;
+
+        case WM_DESTROY:
+            PostQuitMessage(0);
+            return 0;
         }
     }
 

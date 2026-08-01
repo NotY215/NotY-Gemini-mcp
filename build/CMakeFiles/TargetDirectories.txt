@@ -1,3 +1,0 @@
-F:/Own Apps/NotY-Gemini-mcp/build/CMakeFiles/NotYGeminiMCP.dir
-F:/Own Apps/NotY-Gemini-mcp/build/CMakeFiles/ALL_BUILD.dir
-F:/Own Apps/NotY-Gemini-mcp/build/CMakeFiles/ZERO_CHECK.dir

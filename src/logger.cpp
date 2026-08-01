@@ -4,26 +4,28 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <vector>
 #include <cstdarg>
+#include <iostream>
 
 Logger::Logger(const std::string& filename) {
     try {
         std::vector<spdlog::sink_ptr> sinks;
-        
+
         // File sink
         auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(filename, true);
         sinks.push_back(file_sink);
-        
+
         // Console sink
         auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
         sinks.push_back(console_sink);
-        
+
         logger = std::make_shared<spdlog::logger>("app", sinks.begin(), sinks.end());
         logger->set_level(spdlog::level::info);
         logger->flush_on(spdlog::level::err);
-        
+
         spdlog::register_logger(logger);
         spdlog::set_default_logger(logger);
-    } catch (const spdlog::spdlog_ex& ex) {
+    }
+    catch (const spdlog::spdlog_ex& ex) {
         std::cerr << "Log initialization failed: " << ex.what() << std::endl;
     }
 }

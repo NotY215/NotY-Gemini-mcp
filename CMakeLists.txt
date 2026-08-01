@@ -1,17 +1,18 @@
 cmake_minimum_required(VERSION 3.20)
 project(NotYGeminiMCP VERSION 1.0.0 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 # Windows specific settings
 if(WIN32)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MT /W4 /EHsc /DUNICODE /D_UNICODE")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MT /W4 /EHsc /DUNICODE /D_UNICODE /DWIN32_LEAN_AND_MEAN")
     add_definitions(-DWIN32_LEAN_AND_MEAN)
+    add_definitions(-D_WIN32_WINNT=0x0A00)  # Windows 10+
 endif()
 
-# Dependencies - removed duktape
+# Dependencies
 find_package(Boost REQUIRED COMPONENTS 
     system 
     filesystem 
@@ -82,6 +83,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     oleaut32
     advapi32
     shlwapi
+    atl
 )
 
 # Add resources if available

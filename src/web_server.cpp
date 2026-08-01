@@ -7,6 +7,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <filesystem>
 
 namespace beast = boost::beast;
 namespace http = beast::http;
@@ -20,7 +21,7 @@ WebServer::~WebServer() {
 }
 
 bool WebServer::start() {
-    if (isRunning) {
+    if (isRunning.load()) {
         return true;
     }
 
@@ -38,11 +39,11 @@ void WebServer::stop() {
 
 void WebServer::runServer() {
     try {
-        net::io_context ioc{1};
-        tcp::acceptor acceptor{ioc, tcp::endpoint(tcp::v4(), port)};
+        net::io_context ioc{ 1 };
+        tcp::acceptor acceptor{ ioc, tcp::endpoint(tcp::v4(), static_cast<unsigned short>(port)) };
 
-        while (isRunning) {
-            tcp::socket socket{ioc};
+        while (isRunning.load()) {
+            tcp::socket socket{ ioc };
             acceptor.accept(socket);
 
             beast::flat_buffer buffer;
@@ -54,26 +55,34 @@ void WebServer::runServer() {
 
             // Handle different routes
             if (req.method() == http::verb::post) {
-                handleRequest(req.body(), response);
-                
+                response = handleRequest(req.body());
+
                 res.result(http::status::ok);
                 res.set(http::field::content_type, "application/json");
                 res.body() = response;
                 res.prepare_payload();
-            } else {
+            }
+            else {
                 // Serve static files
                 std::string path = req.target().to_string();
                 if (path == "/") path = "/index.html";
-                
+
+                // Remove query string if present
+                size_t queryPos = path.find('?');
+                if (queryPos != std::string::npos) {
+                    path = path.substr(0, queryPos);
+                }
+
                 std::string filePath = "web" + path;
-                std::ifstream file(filePath);
+                std::ifstream file(filePath, std::ios::binary);
                 if (file.is_open()) {
                     std::string content((std::istreambuf_iterator<char>(file)),
-                                       std::istreambuf_iterator<char>());
+                        std::istreambuf_iterator<char>());
                     res.result(http::status::ok);
                     res.body() = content;
                     res.prepare_payload();
-                } else {
+                }
+                else {
                     res.result(http::status::not_found);
                     res.body() = "File not found";
                     res.prepare_payload();
@@ -88,7 +97,7 @@ void WebServer::runServer() {
     }
 }
 
-void WebServer::handleRequest(const std::string& request, std::string& response) {
+std::string WebServer::handleRequest(const std::string& request) {
     try {
         auto json = nlohmann::json::parse(request);
         std::string type = json["type"];
@@ -120,13 +129,13 @@ void WebServer::handleRequest(const std::string& request, std::string& response)
             result["error"] = "Unknown request type";
         }
 
-        response = result.dump();
+        return result.dump();
     }
     catch (const std::exception& e) {
         nlohmann::json error;
         error["success"] = false;
         error["error"] = e.what();
-        response = error.dump();
+        return error.dump();
     }
 }
 
