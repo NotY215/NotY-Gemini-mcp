@@ -3,9 +3,11 @@ package com.noty.geminimcp;
 public class NativeBridge {
     static {
         System.loadLibrary("geminicore");
+        initializeNative();
     }
-    
+
     // Native methods
+    public static native void initializeNative();
     public static native boolean checkVSCode();
     public static native String getVSCodePath();
     public static native boolean validateVSCodePath(String path);

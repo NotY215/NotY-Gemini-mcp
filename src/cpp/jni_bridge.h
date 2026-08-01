@@ -4,20 +4,28 @@
 #include <functional>
 #include <memory>
 
+// Forward declarations
+class WebServer;
+class GeminiService;
+class ConfigManager;
+class VSCodeManager;
+class Logger;
+
 class JNIBridge {
-private:
+public:
+    // Static members (public for access from jni_bridge.cpp)
     static JavaVM* javaVM;
     static jobject javaCallback;
-    static std::unique_ptr<class WebServer> webServer;
-    static std::unique_ptr<class GeminiService> geminiService;
-    static std::unique_ptr<class ConfigManager> config;
-    static std::unique_ptr<class VSCodeManager> vscodeManager;
-    static std::unique_ptr<class Logger> logger;
+    static std::unique_ptr<WebServer> webServer;
+    static std::unique_ptr<GeminiService> geminiService;
+    static std::unique_ptr<ConfigManager> config;
+    static std::unique_ptr<VSCodeManager> vscodeManager;
+    static std::unique_ptr<Logger> logger;
 
-public:
     static bool initialize(JavaVM* vm);
     static void setCallback(jobject callback);
-    
+    static void sendToJava(const std::string& event, const std::string& data);
+
     // Native methods called from Java
     static jboolean JNICALL checkVSCode(JNIEnv* env, jobject obj);
     static jstring JNICALL getVSCodePath(JNIEnv* env, jobject obj);
@@ -31,7 +39,4 @@ public:
     static jstring JNICALL analyzeCode(JNIEnv* env, jobject obj, jstring code, jstring question);
     static jstring JNICALL fixErrors(JNIEnv* env, jobject obj, jstring errorLog, jstring code);
     static void JNICALL shutdown(JNIEnv* env, jobject obj);
-    
-    // Callback to Java
-    static void sendToJava(const std::string& event, const std::string& data);
 };

@@ -14,24 +14,24 @@ namespace http = beast::http;
 namespace net = boost::asio;
 using tcp = net::ip::tcp;
 
-WebServer::WebServer(int port) : port(port), isRunning(false) {}
+WebServer::WebServer(int port) : port(port), m_isRunning(false) {}
 
 WebServer::~WebServer() {
     stop();
 }
 
 bool WebServer::start() {
-    if (isRunning.load()) {
+    if (m_isRunning.load()) {
         return true;
     }
 
     serverThread = std::make_unique<std::thread>(&WebServer::runServer, this);
-    isRunning = true;
+    m_isRunning = true;
     return true;
 }
 
 void WebServer::stop() {
-    isRunning = false;
+    m_isRunning = false;
     if (serverThread && serverThread->joinable()) {
         serverThread->join();
     }
@@ -39,11 +39,11 @@ void WebServer::stop() {
 
 void WebServer::runServer() {
     try {
-        net::io_context ioc{ 1 };
-        tcp::acceptor acceptor{ ioc, tcp::endpoint(tcp::v4(), static_cast<unsigned short>(port)) };
+        net::io_context ioc{1};
+        tcp::acceptor acceptor{ioc, tcp::endpoint(tcp::v4(), static_cast<unsigned short>(port))};
 
-        while (isRunning.load()) {
-            tcp::socket socket{ ioc };
+        while (m_isRunning.load()) {
+            tcp::socket socket{ioc};
             acceptor.accept(socket);
 
             beast::flat_buffer buffer;
@@ -60,9 +60,9 @@ void WebServer::runServer() {
                 res.set(http::field::content_type, "application/json");
                 res.body() = response;
                 res.prepare_payload();
-            }
-            else {
-                std::string path = req.target().to_string();
+            } else {
+                // Get the target path as string
+                std::string path = std::string(req.target());
                 if (path == "/") path = "/index.html";
 
                 size_t queryPos = path.find('?');
@@ -74,12 +74,11 @@ void WebServer::runServer() {
                 std::ifstream file(filePath, std::ios::binary);
                 if (file.is_open()) {
                     std::string content((std::istreambuf_iterator<char>(file)),
-                        std::istreambuf_iterator<char>());
+                                       std::istreambuf_iterator<char>());
                     res.result(http::status::ok);
                     res.body() = content;
                     res.prepare_payload();
-                }
-                else {
+                } else {
                     res.result(http::status::not_found);
                     res.body() = "File not found";
                     res.prepare_payload();
@@ -100,24 +99,24 @@ std::string WebServer::handleRequest(const std::string& request) {
         std::string type = json["type"];
         nlohmann::json result;
 
-        if (type == "chat" && chatHandler) {
+        if (type == "chat" && m_chatHandler) {
             std::string message = json["message"];
             std::string context = json.value("context", "");
-            std::string response_text = chatHandler(message, context);
+            std::string response_text = m_chatHandler(message, context);
             result["response"] = response_text;
             result["success"] = true;
         }
-        else if (type == "analyze" && analyzeHandler) {
+        else if (type == "analyze" && m_analyzeHandler) {
             std::string code = json["code"];
             std::string question = json["question"];
-            std::string response_text = analyzeHandler(code, question);
+            std::string response_text = m_analyzeHandler(code, question);
             result["response"] = response_text;
             result["success"] = true;
         }
-        else if (type == "fix-errors" && fixErrorsHandler) {
+        else if (type == "fix-errors" && m_fixErrorsHandler) {
             std::string errorLog = json["errorLog"];
             std::string code = json["code"];
-            std::string response_text = fixErrorsHandler(errorLog, code);
+            std::string response_text = m_fixErrorsHandler(errorLog, code);
             result["response"] = response_text;
             result["success"] = true;
         }
@@ -137,13 +136,13 @@ std::string WebServer::handleRequest(const std::string& request) {
 }
 
 void WebServer::setChatHandler(std::function<std::string(const std::string&, const std::string&)> handler) {
-    chatHandler = handler;
+    m_chatHandler = handler;
 }
 
 void WebServer::setAnalyzeHandler(std::function<std::string(const std::string&, const std::string&)> handler) {
-    analyzeHandler = handler;
+    m_analyzeHandler = handler;
 }
 
 void WebServer::setFixErrorsHandler(std::function<std::string(const std::string&, const std::string&)> handler) {
-    fixErrorsHandler = handler;
+    m_fixErrorsHandler = handler;
 }

@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iostream>
 #include <regex>
+#include <windows.h>
 
 namespace fs = std::filesystem;
 
