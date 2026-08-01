@@ -15,8 +15,6 @@
     "curl",
     "nlohmann-json",
     "fmt",
-    "spdlog",
-    "qt5"
-  ],
-  "builtin-baseline": "ed53ecaf971aa9d6d7c2c77a011bc475cdf11c54"
+    "spdlog"
+  ]
 }
