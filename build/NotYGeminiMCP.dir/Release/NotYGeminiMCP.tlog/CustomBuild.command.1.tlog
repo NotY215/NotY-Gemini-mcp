@@ -1,0 +1,10 @@
+^F:\OWN APPS\NOTY-GEMINI-MCP\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" "-SF:/Own Apps/NotY-Gemini-mcp" "-BF:/Own Apps/NotY-Gemini-mcp/build" --check-stamp-file "F:/Own Apps/NotY-Gemini-mcp/build/CMakeFiles/generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

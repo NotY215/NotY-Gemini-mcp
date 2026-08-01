@@ -1,0 +1,19 @@
+{
+  "packages": [
+{
+  "SPDXID" : "SPDXRef-resource-0",
+  "checksums" : 
+  [
+    {
+      "algorithm" : "SHA512",
+      "checksumValue" : "8d4908e9488e16ff9f67cb583b57b3d91239cf090a17c48aa84a27c40cbeb15e4d5731eb66ad56aa8bddeef5404e5d1f22bca68fe0e4974a5995a2bed1af165f"
+    }
+  ],
+  "copyrightText" : "NOASSERTION",
+  "downloadLocation" : "git+https://github.com/boostorg/spirit@boost-1.91.0",
+  "licenseConcluded" : "NOASSERTION",
+  "licenseDeclared" : "NOASSERTION",
+  "name" : "boostorg/spirit"
+}
+  ]
+}

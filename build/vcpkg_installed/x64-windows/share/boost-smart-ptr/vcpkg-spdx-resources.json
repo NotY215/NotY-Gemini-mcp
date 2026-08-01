@@ -1,0 +1,19 @@
+{
+  "packages": [
+{
+  "SPDXID" : "SPDXRef-resource-0",
+  "checksums" : 
+  [
+    {
+      "algorithm" : "SHA512",
+      "checksumValue" : "6aa61191a1cab8d55121b5528dab0814395b120de84e0f1e8f09a0453254460b7fd2c7e616715cfc734e45daed5c4793742e814ececa063c357b9edf407fc6eb"
+    }
+  ],
+  "copyrightText" : "NOASSERTION",
+  "downloadLocation" : "git+https://github.com/boostorg/smart_ptr@boost-1.91.0",
+  "licenseConcluded" : "NOASSERTION",
+  "licenseDeclared" : "NOASSERTION",
+  "name" : "boostorg/smart_ptr"
+}
+  ]
+}

@@ -1,8 +1,9 @@
 {
   "name": "noty-gemini-mcp",
   "version": "1.0.0",
-  "description": "NotY-Gemini-MCP - AI Coding Assistant",
+  "description": "NotY-Gemini-MCP - AI Coding Assistant for VS Code",
   "homepage": "https://github.com/NotY215/NotY-Gemini-mcp",
+  "license": "GPL-3.0",
   "dependencies": [
     "boost-beast",
     "boost-asio",

@@ -1,0 +1,19 @@
+{
+  "packages": [
+{
+  "SPDXID" : "SPDXRef-resource-0",
+  "checksums" : 
+  [
+    {
+      "algorithm" : "SHA512",
+      "checksumValue" : "381ea4a321362d80d03ecc719702e14058d7eb6c5915d62b3c08a8cbcdcd2020da9eabe8a4c5dacc6fdb172e3b1e8136b6dc7df9c22a110bf9fb3c43583ff215"
+    }
+  ],
+  "copyrightText" : "NOASSERTION",
+  "downloadLocation" : "git+https://github.com/boostorg/chrono@boost-1.91.0",
+  "licenseConcluded" : "NOASSERTION",
+  "licenseDeclared" : "NOASSERTION",
+  "name" : "boostorg/chrono"
+}
+  ]
+}

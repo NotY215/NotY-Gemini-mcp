@@ -1,0 +1,19 @@
+{
+  "packages": [
+{
+  "SPDXID" : "SPDXRef-resource-0",
+  "checksums" : 
+  [
+    {
+      "algorithm" : "SHA512",
+      "checksumValue" : "40a4b258ed47471e355e263b1c591129c0b86e5e0304653080dc36611ec6a4cdaa9131bf1ae6c858dfec70ce3cd93be0dc73dec5077a1fb6995a1f9e347cea41"
+    }
+  ],
+  "copyrightText" : "NOASSERTION",
+  "downloadLocation" : "git+https://github.com/boostorg/lexical_cast@boost-1.91.0",
+  "licenseConcluded" : "NOASSERTION",
+  "licenseDeclared" : "NOASSERTION",
+  "name" : "boostorg/lexical_cast"
+}
+  ]
+}

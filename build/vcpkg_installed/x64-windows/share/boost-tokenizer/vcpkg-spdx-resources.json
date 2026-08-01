@@ -1,0 +1,19 @@
+{
+  "packages": [
+{
+  "SPDXID" : "SPDXRef-resource-0",
+  "checksums" : 
+  [
+    {
+      "algorithm" : "SHA512",
+      "checksumValue" : "0b29e6cf77fa5d8057b213ac584c5f6f7fbc08dd7adea93b6bc6dedb01900b85f76aa9d800640632d1924569f44b9d354ba63d5a3e70811afd216b4e27cae5eb"
+    }
+  ],
+  "copyrightText" : "NOASSERTION",
+  "downloadLocation" : "git+https://github.com/boostorg/tokenizer@boost-1.91.0",
+  "licenseConcluded" : "NOASSERTION",
+  "licenseDeclared" : "NOASSERTION",
+  "name" : "boostorg/tokenizer"
+}
+  ]
+}

@@ -1,0 +1,79 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="F:\Own Apps\NotY-Gemini-mcp\src\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="F:\Own Apps\NotY-Gemini-mcp\src\app_window.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="F:\Own Apps\NotY-Gemini-mcp\src\web_server.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="F:\Own Apps\NotY-Gemini-mcp\src\gemini_service.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="F:\Own Apps\NotY-Gemini-mcp\src\vscode_manager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="F:\Own Apps\NotY-Gemini-mcp\src\encryption.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="F:\Own Apps\NotY-Gemini-mcp\src\tray_icon.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="F:\Own Apps\NotY-Gemini-mcp\src\config_manager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="F:\Own Apps\NotY-Gemini-mcp\src\logger.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="F:\Own Apps\NotY-Gemini-mcp\src\app_window.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="F:\Own Apps\NotY-Gemini-mcp\src\web_server.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="F:\Own Apps\NotY-Gemini-mcp\src\gemini_service.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="F:\Own Apps\NotY-Gemini-mcp\src\vscode_manager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="F:\Own Apps\NotY-Gemini-mcp\src\encryption.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="F:\Own Apps\NotY-Gemini-mcp\src\tray_icon.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="F:\Own Apps\NotY-Gemini-mcp\src\config_manager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="F:\Own Apps\NotY-Gemini-mcp\src\logger.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="F:\Own Apps\NotY-Gemini-mcp\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="F:\Own Apps\NotY-Gemini-mcp\build\vcpkg_installed\x64-windows\share\boost-1.91.0\assert\boost_assert.natvis" />
+    <Natvis Include="F:\Own Apps\NotY-Gemini-mcp\build\vcpkg_installed\x64-windows\share\boost-1.91.0\unordered\boost_unordered.natvis" />
+    <Natvis Include="F:\Own Apps\NotY-Gemini-mcp\build\vcpkg_installed\x64-windows\share\nlohmann_json\nlohmann_json.natvis" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="F:\Own Apps\NotY-Gemini-mcp\resources\icon.rc">
+      <Filter>Source Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{45F253F2-02A7-349C-B4FD-D60F066ABE54}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{CE06CA2E-89E2-3663-9C55-B23DA0028B52}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

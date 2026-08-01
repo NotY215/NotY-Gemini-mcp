@@ -11,21 +11,22 @@ if(WIN32)
     add_definitions(-DWIN32_LEAN_AND_MEAN)
 endif()
 
-# Dependencies
+# Dependencies - removed duktape
 find_package(Boost REQUIRED COMPONENTS 
     system 
     filesystem 
     json 
     asio 
-    beast 
     program_options
     property_tree
+    beast
 )
 
 find_package(OpenSSL REQUIRED)
 find_package(CURL REQUIRED)
 find_package(nlohmann_json REQUIRED)
-find_package(duktape REQUIRED)
+find_package(fmt REQUIRED)
+find_package(spdlog REQUIRED)
 
 # Source files
 set(SOURCES
@@ -68,14 +69,24 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ${OPENSSL_LIBRARIES}
     ${CURL_LIBRARIES}
     nlohmann_json::nlohmann_json
-    duktape::duktape
-    ${CMAKE_CURRENT_SOURCE_DIR}/resources/icon.rc
+    fmt::fmt
+    spdlog::spdlog
+    ws2_32
+    winhttp
+    crypt32
+    shell32
+    user32
+    gdi32
+    comctl32
+    ole32
+    oleaut32
+    advapi32
+    shlwapi
 )
 
-# Windows resources
-if(WIN32)
-    set(RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/resources/icon.rc)
-    target_sources(${PROJECT_NAME} PRIVATE ${RESOURCES})
+# Add resources if available
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/resources/icon.rc)
+    target_sources(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/resources/icon.rc)
 endif()
 
 # Copy web files to build directory
@@ -83,4 +94,20 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     ${CMAKE_CURRENT_SOURCE_DIR}/web
     ${CMAKE_CURRENT_BINARY_DIR}/web
+    COMMENT "Copying web files to build directory"
+)
+
+# Windows specific definitions
+if(WIN32)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+        WIN32
+        _WIN32
+        _WINDOWS
+        NOMINMAX
+    )
+endif()
+
+# Set output directory
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )

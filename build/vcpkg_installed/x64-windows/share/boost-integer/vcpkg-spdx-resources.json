@@ -1,0 +1,19 @@
+{
+  "packages": [
+{
+  "SPDXID" : "SPDXRef-resource-0",
+  "checksums" : 
+  [
+    {
+      "algorithm" : "SHA512",
+      "checksumValue" : "fbc85ff7e37931965ba632e9f9273e73a386693f38f381f3fbecfc1a7bd583ac3b85e3276312a258950b6cbc242fd25d4440b854f38d2d0e04de9d10d414353a"
+    }
+  ],
+  "copyrightText" : "NOASSERTION",
+  "downloadLocation" : "git+https://github.com/boostorg/integer@boost-1.91.0",
+  "licenseConcluded" : "NOASSERTION",
+  "licenseDeclared" : "NOASSERTION",
+  "name" : "boostorg/integer"
+}
+  ]
+}
