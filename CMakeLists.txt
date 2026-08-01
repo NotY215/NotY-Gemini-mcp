@@ -17,6 +17,9 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
+# Find Qt5
+find_package(Qt5 REQUIRED COMPONENTS Core Widgets Quick QuickControls2 QuickTemplates2)
+
 # Find Boost
 find_package(Boost REQUIRED COMPONENTS 
     system 
@@ -58,8 +61,27 @@ set(HEADERS
     src/logger.h
 )
 
+# QML resources
+set(QML_FILES
+    ui/main.qml
+    ui/VSCodeSetup.qml
+    ui/ApiKeySetup.qml
+    ui/ServerControl.qml
+    ui/TermsDialog.qml
+    ui/ToastNotification.qml
+    ui/styles/Theme.qml
+)
+
+# Qt resources
+set(QRC_FILES
+    resources.qrc
+)
+
+# Generate QML resources
+qt5_add_resources(QML_RESOURCES ${QRC_FILES})
+
 # Executable
-add_executable(${PROJECT_NAME} WIN32 ${SOURCES} ${HEADERS})
+add_executable(${PROJECT_NAME} WIN32 ${SOURCES} ${HEADERS} ${QML_RESOURCES})
 
 # Include directories
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -71,6 +93,11 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 # Link libraries
 target_link_libraries(${PROJECT_NAME} PRIVATE
+    Qt5::Core
+    Qt5::Widgets
+    Qt5::Quick
+    Qt5::QuickControls2
+    Qt5::QuickTemplates2
     ${Boost_LIBRARIES}
     ${OPENSSL_LIBRARIES}
     ${CURL_LIBRARIES}
@@ -95,12 +122,12 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/resources/icon.rc)
     target_sources(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/resources/icon.rc)
 endif()
 
-# Copy web files to build directory
+# Copy QML files to build directory
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_CURRENT_SOURCE_DIR}/web
-    ${CMAKE_CURRENT_BINARY_DIR}/web
-    COMMENT "Copying web files to build directory"
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui
+    ${CMAKE_CURRENT_BINARY_DIR}/ui
+    COMMENT "Copying QML files to build directory"
 )
 
 # Windows specific definitions

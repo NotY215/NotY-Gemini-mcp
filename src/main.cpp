@@ -1,10 +1,9 @@
-#include <windows.h>
+#include <QApplication>
+#include <QMessageBox>
+#include <QIcon>
+#include <memory>
 #include <iostream>
 #include <thread>
-#include <chrono>
-#include <shlobj.h>
-#include <commdlg.h>
-#include <nlohmann/json.hpp>
 #include "app_window.h"
 #include "web_server.h"
 #include "tray_icon.h"
@@ -14,7 +13,9 @@
 #include "gemini_service.h"
 #include "encryption.h"
 
-class Application {
+class Application : public QObject {
+    Q_OBJECT
+
 private:
     std::unique_ptr<AppWindow> window;
     std::unique_ptr<WebServer> webServer;
@@ -31,8 +32,12 @@ public:
         config = std::make_unique<ConfigManager>();
         vscodeManager = std::make_unique<VSCodeManager>();
         Encryption::init();
-
+        
         logger->info("Application starting...");
+        
+        // Set application info
+        QApplication::setApplicationName("NotY-Gemini-MCP");
+        QApplication::setOrganizationName("NotY");
     }
 
     ~Application() {
@@ -61,12 +66,11 @@ public:
 
             checkVSCode();
 
-            runMessageLoop();
-
-            return 0;
+            return QApplication::exec();
         }
         catch (const std::exception& e) {
             logger->error("Exception: {}", e.what());
+            QMessageBox::critical(nullptr, "Fatal Error", e.what());
             return 1;
         }
     }
@@ -75,27 +79,27 @@ private:
     bool startWebServer() {
         logger->info("Starting web server...");
         webServer = std::make_unique<WebServer>(31415);
-
+        
         webServer->setChatHandler([this](const std::string& message, const std::string& context) {
             if (geminiService && geminiService->isValid()) {
                 return geminiService->sendMessage(message, context);
             }
             return std::string("Error: Gemini service not initialized");
-            });
+        });
 
         webServer->setAnalyzeHandler([this](const std::string& code, const std::string& question) {
             if (geminiService && geminiService->isValid()) {
                 return geminiService->analyzeCode(code, question);
             }
             return std::string("Error: Gemini service not initialized");
-            });
+        });
 
         webServer->setFixErrorsHandler([this](const std::string& errorLog, const std::string& code) {
             if (geminiService && geminiService->isValid()) {
                 return geminiService->fixErrors(errorLog, code);
             }
             return std::string("Error: Gemini service not initialized");
-            });
+        });
 
         return webServer->start();
     }
@@ -103,92 +107,120 @@ private:
     bool createMainWindow() {
         logger->info("Creating main window...");
         window = std::make_unique<AppWindow>(1000, 700);
-
+        
         window->setTitle("NotY-Gemini-MCP");
-        window->setIcon("resources/icon.ico");
-
+        window->setIcon(":/resources/icon.png");
+        
+        // Connect QML signals
+        QObject::connect(window.get(), &AppWindow::qmlMessage,
+                         this, &Application::handleQmlMessage);
+        
         window->setOnClose([this]() {
             if (config->getServerRunning()) {
                 window->hide();
-            }
-            else {
+            } else {
                 isRunning = false;
-                PostQuitMessage(0);
+                QApplication::quit();
             }
-            });
+        });
 
-        return window->create();
+        window->show();
+        return true;
     }
 
     bool createTrayIcon() {
         logger->info("Creating tray icon...");
         trayIcon = std::make_unique<TrayIcon>();
-
-        trayIcon->setIcon("resources/tray-icon.png");
+        
+        trayIcon->setIcon(":/resources/tray-icon.png");
         trayIcon->setTooltip("NotY-Gemini-MCP - Server Running");
-
+        
         trayIcon->onOpen([this]() {
             if (window) {
                 window->show();
             }
-            });
+        });
 
         trayIcon->onExit([this]() {
             stopServer();
             isRunning = false;
-            PostQuitMessage(0);
-            });
+            QApplication::quit();
+        });
 
         return trayIcon->create();
     }
 
     void checkVSCode() {
         logger->info("Checking VS Code installation...");
-
+        
         auto vscodePath = vscodeManager->findInstallation();
         if (vscodePath.has_value()) {
             config->setVSCodePath(vscodePath.value());
             logger->info("VS Code found at: {}", vscodePath.value());
-
-            nlohmann::json response;
-            response["type"] = "vscode-status";
-            response["installed"] = true;
-            response["path"] = vscodePath.value();
-            sendToWebUI(response.dump());
-        }
-        else {
+            sendToQml("vscode-status", {
+                {"installed", true},
+                {"path", vscodePath.value()}
+            });
+        } else {
             logger->warn("VS Code not found");
-            nlohmann::json response;
-            response["type"] = "vscode-status";
-            response["installed"] = false;
-            sendToWebUI(response.dump());
+            sendToQml("vscode-status", {
+                {"installed", false}
+            });
+        }
+    }
+
+    void handleQmlMessage(const QString& qmlMessage) {
+        try {
+            std::string message = qmlMessage.toStdString();
+            auto json = nlohmann::json::parse(message);
+            std::string type = json["type"];
+            
+            if (type == "save-api-key") {
+                handleSaveApiKey(json["key"]);
+            }
+            else if (type == "start-server") {
+                handleStartServer();
+            }
+            else if (type == "stop-server") {
+                handleStopServer();
+            }
+            else if (type == "browse-vscode") {
+                handleBrowseVSCode();
+            }
+            else if (type == "refresh-vscode") {
+                checkVSCode();
+            }
+            else if (type == "accept-terms") {
+                config->setTermsAccepted(true);
+            }
+            else if (type == "decline-terms") {
+                QApplication::quit();
+            }
+        }
+        catch (const std::exception& e) {
+            logger->error("Error handling QML message: {}", e.what());
         }
     }
 
     void handleSaveApiKey(const std::string& apiKey) {
         logger->info("Saving API key...");
-
+        
         try {
             std::string encrypted = Encryption::encrypt(apiKey);
             config->setApiKey(encrypted);
-
+            
             geminiService = std::make_unique<GeminiService>(apiKey);
-
+            
             if (geminiService->verifyKey()) {
-                nlohmann::json response;
-                response["type"] = "api-key-valid";
-                response["valid"] = true;
-                sendToWebUI(response.dump());
-
+                sendToQml("api-key-valid", {
+                    {"valid", true}
+                });
                 logger->info("API key verified successfully");
-            }
-            else {
+            } else {
                 config->setApiKey("");
-                nlohmann::json response;
-                response["type"] = "api-key-valid";
-                response["valid"] = false;
-                sendToWebUI(response.dump());
-
+                sendToQml("api-key-valid", {
+                    {"valid", false}
+                });
                 logger->error("Invalid API key");
             }
         }
@@ -200,15 +232,12 @@ private:
     void handleStartServer() {
         logger->info("Starting server...");
         config->setServerRunning(true);
-
+        
         if (trayIcon) {
             trayIcon->show();
         }
-
-        nlohmann::json response;
-        response["type"] = "server-started";
-        sendToWebUI(response.dump());
-
+        
+        sendToQml("server-started", {});
         logger->info("Server started successfully");
     }
 
@@ -219,65 +248,40 @@ private:
     void stopServer() {
         logger->info("Stopping server...");
         config->setServerRunning(false);
-
+        
         if (trayIcon) {
             trayIcon->hide();
         }
-
-        nlohmann::json response;
-        response["type"] = "server-stopped";
-        sendToWebUI(response.dump());
-
+        
+        sendToQml("server-stopped", {});
         logger->info("Server stopped");
     }
 
     void handleBrowseVSCode() {
-        OPENFILENAMEA ofn = { 0 };
-        char fileName[MAX_PATH] = { 0 };
-
-        ofn.lStructSize = sizeof(ofn);
-        ofn.hwndOwner = window->getHandle();
-        ofn.lpstrFilter = "Executable Files\0*.exe\0All Files\0*.*\0";
-        ofn.lpstrFile = fileName;
-        ofn.nMaxFile = MAX_PATH;
-        ofn.Flags = OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
-
-        if (GetOpenFileNameA(&ofn)) {
-            std::string selectedPath(fileName);
-            if (vscodeManager->validateExecutable(selectedPath)) {
-                config->setVSCodePath(selectedPath);
-                checkVSCode();
-            }
-        }
+        // Implement file dialog to browse for VS Code
+        // This will be handled in QML
     }
 
-    void sendToWebUI(const std::string& message) {
+    void sendToQml(const std::string& type, const nlohmann::json& data) {
         if (window) {
-            window->sendToWeb(message);
-        }
-    }
-
-    void runMessageLoop() {
-        MSG msg;
-        while (isRunning && GetMessage(&msg, NULL, 0, 0)) {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
+            nlohmann::json message;
+            message["type"] = type;
+            for (auto& [key, value] : data.items()) {
+                message[key] = value;
+            }
+            window->sendToWeb(message.dump());
         }
     }
 };
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-    AllocConsole();
-    FILE* fDummy;
-    freopen_s(&fDummy, "CONOUT$", "w", stdout);
-    freopen_s(&fDummy, "CONOUT$", "w", stderr);
-
-    try {
-        Application app;
-        return app.run();
-    }
-    catch (const std::exception& e) {
-        MessageBoxA(NULL, e.what(), "Fatal Error", MB_OK | MB_ICONERROR);
-        return 1;
-    }
+int main(int argc, char *argv[]) {
+    QApplication app(argc, argv);
+    
+    // Set application icon
+    app.setWindowIcon(QIcon(":/resources/icon.png"));
+    
+    Application application;
+    return application.run();
 }
+
+#include "main.moc"

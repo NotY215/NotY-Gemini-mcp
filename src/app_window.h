@@ -1,23 +1,20 @@
 #pragma once
-#include <windows.h>
-#include <string>
+#include <QObject>
+#include <QQuickView>
+#include <QQmlContext>
+#include <QString>
 #include <functional>
+#include <memory>
 
-class AppWindow {
+class AppWindow : public QObject {
+    Q_OBJECT
+
 private:
-    HWND hwnd;
-    int width;
-    int height;
-    std::string title;
-    std::string iconPath;
+    std::unique_ptr<QQuickView> view;
     bool isVisible;
-    HWND browserHwnd;
 
     std::function<void()> onCloseCallback;
     std::function<void(const std::string&)> onWebMessageCallback;
-
-    static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
-    void createBrowserControl();
 
 public:
     AppWindow(int w, int h);
@@ -29,10 +26,15 @@ public:
     void close();
     void setTitle(const std::string& title);
     void setIcon(const std::string& path);
-    HWND getHandle() const { return hwnd; }
+    QWindow* getHandle() const { return view ? view->window() : nullptr; }
 
     void setOnClose(std::function<void()> callback);
     void setOnWebMessage(std::function<void(const std::string&)> callback);
     void sendToWeb(const std::string& message);
-    void navigateTo(const std::string& url);
+
+public slots:
+    void handleQmlMessage(const QString& message);
+
+signals:
+    void qmlMessage(const QString& message);
 };
