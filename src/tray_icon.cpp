@@ -1,5 +1,4 @@
 #include "tray_icon.h"
-#include <shellapi.h>
 #include <strsafe.h>
 #include <iostream>
 
@@ -13,7 +12,6 @@ TrayIcon::~TrayIcon() {
 }
 
 bool TrayIcon::create() {
-    // Create a hidden window to handle tray messages
     WNDCLASSEX wc = { 0 };
     wc.cbSize = sizeof(WNDCLASSEX);
     wc.lpfnWndProc = TrayWindowProc;
@@ -42,7 +40,6 @@ bool TrayIcon::create() {
         return false;
     }
 
-    // Initialize the tray icon
     initNotifyIcon();
     visible = true;
 
@@ -66,7 +63,6 @@ void TrayIcon::initNotifyIcon() {
     nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     nid.uCallbackMessage = WM_USER + 1;
 
-    // Load default icon if no custom icon specified
     if (iconPath.empty()) {
         nid.hIcon = LoadIcon(NULL, IDI_APPLICATION);
     }
@@ -152,7 +148,7 @@ LRESULT CALLBACK TrayIcon::TrayWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LP
 
     if (tray) {
         switch (msg) {
-        case WM_USER + 1: // Tray icon message
+        case WM_USER + 1:
             switch (lParam) {
             case WM_LBUTTONDBLCLK:
             case WM_LBUTTONUP:
@@ -162,7 +158,6 @@ LRESULT CALLBACK TrayIcon::TrayWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LP
                 break;
 
             case WM_RBUTTONUP: {
-                // Show context menu
                 POINT pt;
                 GetCursorPos(&pt);
 

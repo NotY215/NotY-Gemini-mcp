@@ -53,7 +53,6 @@ void WebServer::runServer() {
             http::response<http::string_body> res;
             std::string response;
 
-            // Handle different routes
             if (req.method() == http::verb::post) {
                 response = handleRequest(req.body());
 
@@ -63,11 +62,9 @@ void WebServer::runServer() {
                 res.prepare_payload();
             }
             else {
-                // Serve static files
                 std::string path = req.target().to_string();
                 if (path == "/") path = "/index.html";
 
-                // Remove query string if present
                 size_t queryPos = path.find('?');
                 if (queryPos != std::string::npos) {
                     path = path.substr(0, queryPos);
@@ -139,14 +136,14 @@ std::string WebServer::handleRequest(const std::string& request) {
     }
 }
 
-void WebServer::onChat(std::function<std::string(const std::string&, const std::string&)> handler) {
+void WebServer::setChatHandler(std::function<std::string(const std::string&, const std::string&)> handler) {
     chatHandler = handler;
 }
 
-void WebServer::onAnalyze(std::function<std::string(const std::string&, const std::string&)> handler) {
+void WebServer::setAnalyzeHandler(std::function<std::string(const std::string&, const std::string&)> handler) {
     analyzeHandler = handler;
 }
 
-void WebServer::onFixErrors(std::function<std::string(const std::string&, const std::string&)> handler) {
+void WebServer::setFixErrorsHandler(std::function<std::string(const std::string&, const std::string&)> handler) {
     fixErrorsHandler = handler;
 }

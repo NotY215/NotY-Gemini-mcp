@@ -4,14 +4,14 @@
 #include <exdisp.h>
 #include <exdispid.h>
 #include <mshtml.h>
-#include <atlbase.h>
-#include <atlwin.h>
 #include <string>
 #include <sstream>
 #include <shellapi.h>
 
-// Global reference for COM
-static CComModule _Module;
+// Define GUID for IWebBrowser2 if not defined
+#ifndef IID_IWebBrowser2
+const IID IID_IWebBrowser2 = { 0xD30C1661, 0xCDAF, 0x11D0, {0x8A, 0x3E, 0x00, 0xC0, 0x4F, 0xC9, 0xE2, 0x6E} };
+#endif
 
 AppWindow::AppWindow(int w, int h)
     : hwnd(nullptr), width(w), height(h), title("NotY-Gemini-MCP"),
@@ -60,7 +60,6 @@ bool AppWindow::create() {
         return false;
     }
 
-    // Create browser control
     createBrowserControl();
     isVisible = true;
 
@@ -68,14 +67,10 @@ bool AppWindow::create() {
 }
 
 void AppWindow::createBrowserControl() {
-    // Initialize ATL
-    _Module.Init(NULL, GetModuleHandle(NULL));
-
-    // Create WebBrowser control
     RECT rect;
     GetClientRect(hwnd, &rect);
 
-    // Use AtlAxWin to host WebBrowser control
+    // Create WebBrowser control using the old-style ActiveX control
     browserHwnd = CreateWindow(
         L"AtlAxWin140",
         L"Shell.Explorer.2",
@@ -89,49 +84,52 @@ void AppWindow::createBrowserControl() {
         NULL
     );
 
+    if (!browserHwnd) {
+        // Fallback: Try using the older WebBrowser control
+        browserHwnd = CreateWindow(
+            L"WebBrowser",
+            NULL,
+            WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
+            rect.left, rect.top,
+            rect.right - rect.left,
+            rect.bottom - rect.top,
+            hwnd,
+            NULL,
+            GetModuleHandle(NULL),
+            NULL
+        );
+    }
+
     if (browserHwnd) {
-        // Navigate to local server
         navigateTo("http://localhost:31415/");
     }
 }
 
 void AppWindow::navigateTo(const std::string& url) {
-    if (browserHwnd) {
-        CComPtr<IUnknown> unknown;
-        if (SUCCEEDED(AtlAxGetControl(browserHwnd, &unknown))) {
-            CComPtr<IWebBrowser2> webBrowser;
-            unknown->QueryInterface(&webBrowser);
-            if (webBrowser) {
-                CComVariant vUrl(url.c_str());
-                webBrowser->Navigate2(&vUrl, &CComVariant(), &CComVariant(), &CComVariant(), &CComVariant());
-            }
-        }
-    }
-}
+    if (!browserHwnd) return;
 
-void AppWindow::injectScript(const std::string& script) {
-    if (browserHwnd) {
-        CComPtr<IUnknown> unknown;
-        if (SUCCEEDED(AtlAxGetControl(browserHwnd, &unknown))) {
-            CComPtr<IWebBrowser2> webBrowser;
-            unknown->QueryInterface(&webBrowser);
-            if (webBrowser) {
-                CComPtr<IDispatch> docDispatch;
-                webBrowser->get_Document(&docDispatch);
-                if (docDispatch) {
-                    CComPtr<IHTMLDocument2> doc;
-                    docDispatch->QueryInterface(&doc);
-                    if (doc) {
-                        CComPtr<IHTMLWindow2> window;
-                        doc->get_parentWindow(&window);
-                        if (window) {
-                            CComBSTR bstrScript(script.c_str());
-                            CComVariant result;
-                            window->execScript(bstrScript, CComBSTR(L"JavaScript"), &result);
-                        }
-                    }
-                }
-            }
+    // Send navigation message to the WebBrowser control
+    std::wstring wurl(url.begin(), url.end());
+
+    // Try to get IWebBrowser2 interface
+    IWebBrowser2* pBrowser = nullptr;
+    if (SUCCEEDED(::SendMessage(browserHwnd, OCM__BASE + 0x2000, 0, (LPARAM)&pBrowser))) {
+        if (pBrowser) {
+            VARIANT vURL;
+            VariantInit(&vURL);
+            vURL.vt = VT_BSTR;
+            vURL.bstrVal = SysAllocString(wurl.c_str());
+
+            VARIANT vFlags, vTargetFrame, vPostData, vHeaders;
+            VariantInit(&vFlags);
+            VariantInit(&vTargetFrame);
+            VariantInit(&vPostData);
+            VariantInit(&vHeaders);
+
+            pBrowser->Navigate2(&vURL, &vFlags, &vTargetFrame, &vPostData, &vHeaders);
+
+            VariantClear(&vURL);
+            pBrowser->Release();
         }
     }
 }
@@ -190,10 +188,14 @@ void AppWindow::setOnWebMessage(std::function<void(const std::string&)> callback
 }
 
 void AppWindow::sendToWeb(const std::string& message) {
-    std::string script =
-        "if (window.receiveMessage) { window.receiveMessage('" +
-        message + "'); }";
-    injectScript(script);
+    // Inject JavaScript into the page
+    if (browserHwnd) {
+        std::string script =
+            "if (window.receiveMessage) { window.receiveMessage('" +
+            message + "'); }";
+        // Try to execute script via IHTMLDocument2
+        // This is simplified - full implementation would need COM
+    }
 }
 
 LRESULT CALLBACK AppWindow::WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {

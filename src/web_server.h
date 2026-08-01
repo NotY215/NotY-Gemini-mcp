@@ -26,7 +26,7 @@ public:
     void stop();
     bool isRunning() const { return isRunning.load(); }
 
-    void onChat(std::function<std::string(const std::string&, const std::string&)> handler);
-    void onAnalyze(std::function<std::string(const std::string&, const std::string&)> handler);
-    void onFixErrors(std::function<std::string(const std::string&, const std::string&)> handler);
+    void setChatHandler(std::function<std::string(const std::string&, const std::string&)> handler);
+    void setAnalyzeHandler(std::function<std::string(const std::string&, const std::string&)> handler);
+    void setFixErrorsHandler(std::function<std::string(const std::string&, const std::string&)> handler);
 };

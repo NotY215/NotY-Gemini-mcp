@@ -9,7 +9,7 @@ set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 if(WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4 /EHsc /DUNICODE /D_UNICODE /DWIN32_LEAN_AND_MEAN")
     add_definitions(-DWIN32_LEAN_AND_MEAN)
-    add_definitions(-D_WIN32_WINNT=0x0A00)  # Windows 10+
+    add_definitions(-D_WIN32_WINNT=0x0A00)
 endif()
 
 # Set default build type
@@ -88,7 +88,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     oleaut32
     advapi32
     shlwapi
-    atl
 )
 
 # Add resources if available

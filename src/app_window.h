@@ -2,7 +2,6 @@
 #include <windows.h>
 #include <string>
 #include <functional>
-#include <memory>
 
 class AppWindow {
 private:
@@ -19,7 +18,6 @@ private:
 
     static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
     void createBrowserControl();
-    void injectScript(const std::string& script);
 
 public:
     AppWindow(int w, int h);
