@@ -13,7 +13,7 @@ class Logger;
 
 class JNIBridge {
 public:
-    // Static members (public for access from jni_bridge.cpp)
+    // Static members
     static JavaVM* javaVM;
     static jobject javaCallback;
     static std::unique_ptr<WebServer> webServer;
@@ -21,6 +21,7 @@ public:
     static std::unique_ptr<ConfigManager> config;
     static std::unique_ptr<VSCodeManager> vscodeManager;
     static std::unique_ptr<Logger> logger;
+    static bool jvmInitialized;
 
     static bool initialize(JavaVM* vm);
     static void setCallback(jobject callback);
@@ -39,4 +40,5 @@ public:
     static jstring JNICALL analyzeCode(JNIEnv* env, jobject obj, jstring code, jstring question);
     static jstring JNICALL fixErrors(JNIEnv* env, jobject obj, jstring errorLog, jstring code);
     static void JNICALL shutdown(JNIEnv* env, jobject obj);
+    static jboolean JNICALL startApp(JNIEnv* env, jobject obj);
 };

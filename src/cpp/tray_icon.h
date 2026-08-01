@@ -10,7 +10,7 @@ private:
     NOTIFYICONDATAW nid;
     bool visible;
     std::string iconPath;
-
+    
     std::function<void()> onOpenCallback;
     std::function<void()> onExitCallback;
 
@@ -28,7 +28,7 @@ public:
     void updateIcon(const std::string& path);
     void setTooltip(const std::string& tooltip);
     void setIcon(const std::string& path);
-
+    
     void onOpen(std::function<void()> callback);
     void onExit(std::function<void()> callback);
 

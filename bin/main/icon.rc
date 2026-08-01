@@ -1,0 +1,13 @@
+<RCC>
+    <qresource prefix="/">
+        <file>ui/main.qml</file>
+        <file>ui/VSCodeSetup.qml</file>
+        <file>ui/ApiKeySetup.qml</file>
+        <file>ui/ServerControl.qml</file>
+        <file>ui/TermsDialog.qml</file>
+        <file>ui/ToastNotification.qml</file>
+        <file>ui/styles/Theme.qml</file>
+        <file>resources/icon.png</file>
+        <file>resources/tray-icon.png</file>
+    </qresource>
+</RCC>

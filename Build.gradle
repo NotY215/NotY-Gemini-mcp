@@ -1,7 +1,5 @@
 plugins {
     id 'java'
-    id 'application'
-    id 'com.github.johnrengelman.shadow' version '7.1.2'
 }
 
 group 'com.noty'
@@ -15,96 +13,33 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.10.1'
 }
 
-application {
-    mainClass = 'com.noty.geminimcp.MainApp'
+// Set source directories
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src/java']
+        }
+        resources {
+            srcDirs = ['resources']
+        }
+    }
 }
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
-}
-
-// Set the library path for JNI
-run {
-    systemProperty 'java.library.path', 'libs'
-    // Add JVM args for better performance
-    jvmArgs = ['-Xms256m', '-Xmx512m', '-Dfile.encoding=UTF-8']
-}
-
+// Build JAR for UI
 jar {
     manifest {
-        attributes(
-            'Main-Class': 'com.noty.geminimcp.MainApp'
-        )
+        attributes 'Main-Class': 'com.noty.geminimcp.MainApp'
     }
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
+    from('resources') {
+        into ''
+        include '**/*.png', '**/*.jpg', '**/*.ico'
+    }
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-}
-
-shadowJar {
-    archiveBaseName.set('NotYGeminiMCP')
-    archiveVersion.set('1.0.0')
-    archiveClassifier.set('')
-    manifest {
-        attributes 'Main-Class': 'com.noty.geminimcp.MainApp'
-    }
-    // Include DLLs in the shadow JAR
-    from('libs') {
-        include '*.dll'
-        into 'libs'
-    }
 }
 
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
-}
-
-// Ensure resources directory exists
-task ensureResources {
-    doLast {
-        file('src/main/resources').mkdirs()
-    }
-}
-
-// Create a task to copy the DLLs to the build directory
-task copyDllsToBuild(type: Copy) {
-    dependsOn ensureResources
-    from 'libs'
-    into 'build/libs/libs'
-    include '*.dll'
-}
-
-// Create a task to copy DLLs to the runtime directory
-task copyDllsToRuntime(type: Copy) {
-    dependsOn ensureResources
-    from 'libs'
-    into 'build/classes/java/main/libs'
-    include '*.dll'
-}
-
-// Copy DLLs before build
-classes.dependsOn copyDllsToBuild
-classes.dependsOn copyDllsToRuntime
-run.dependsOn copyDllsToBuild, copyDllsToRuntime
-shadowJar.dependsOn copyDllsToBuild, copyDllsToRuntime
-
-// Clean task to remove libs directory
-task cleanLibs(type: Delete) {
-    delete 'libs'
-}
-
-clean.dependsOn cleanLibs
-
-// Create a distribution zip
-task createDistribution(type: Zip) {
-    dependsOn shadowJar
-    from 'build/libs'
-    include '*.jar'
-    include '*.dll'
-    from 'libs'
-    include '*.dll'
-    into 'NotYGeminiMCP'
-    archiveFileName = 'NotYGeminiMCP-distribution.zip'
 }

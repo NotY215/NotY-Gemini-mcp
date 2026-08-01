@@ -5,3 +5,5 @@
 /out
 .idea
 /.gradle
+.idea/*.xml
+.idea/editor.xml

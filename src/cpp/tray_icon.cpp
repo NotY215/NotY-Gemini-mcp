@@ -1,4 +1,5 @@
 #include "tray_icon.h"
+#include <shellapi.h>
 #include <strsafe.h>
 #include <iostream>
 
@@ -12,22 +13,22 @@ TrayIcon::~TrayIcon() {
 }
 
 bool TrayIcon::create() {
-    WNDCLASSEX wc = { 0 };
-    wc.cbSize = sizeof(WNDCLASSEX);
+    WNDCLASSEXA wc = {0};
+    wc.cbSize = sizeof(WNDCLASSEXA);
     wc.lpfnWndProc = TrayWindowProc;
     wc.hInstance = GetModuleHandle(NULL);
-    wc.lpszClassName = L"TrayIconWindow";
+    wc.lpszClassName = "TrayIconWindow";
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-
-    if (!RegisterClassEx(&wc)) {
+    
+    if (!RegisterClassExA(&wc)) {
         return false;
     }
 
-    hwnd = CreateWindowEx(
+    hwnd = CreateWindowExA(
         0,
-        L"TrayIconWindow",
-        L"TrayIcon",
+        "TrayIconWindow",
+        "TrayIcon",
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT,
         400, 300,
@@ -62,11 +63,10 @@ void TrayIcon::initNotifyIcon() {
     nid.uID = 1001;
     nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     nid.uCallbackMessage = WM_USER + 1;
-
+    
     if (iconPath.empty()) {
         nid.hIcon = LoadIcon(NULL, IDI_APPLICATION);
-    }
-    else {
+    } else {
         std::wstring wPath(iconPath.begin(), iconPath.end());
         nid.hIcon = (HICON)LoadImageW(
             GetModuleHandle(NULL),
@@ -81,7 +81,7 @@ void TrayIcon::initNotifyIcon() {
     }
 
     StringCchCopyW(nid.szTip, ARRAYSIZE(nid.szTip), L"NotY-Gemini-MCP");
-
+    
     Shell_NotifyIconW(NIM_ADD, &nid);
 }
 
@@ -138,7 +138,7 @@ void TrayIcon::onExit(std::function<void()> callback) {
 
 LRESULT CALLBACK TrayIcon::TrayWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     TrayIcon* tray = reinterpret_cast<TrayIcon*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
-
+    
     if (msg == WM_NCCREATE) {
         CREATESTRUCT* cs = reinterpret_cast<CREATESTRUCT*>(lParam);
         tray = reinterpret_cast<TrayIcon*>(cs->lpCreateParams);
@@ -148,49 +148,48 @@ LRESULT CALLBACK TrayIcon::TrayWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LP
 
     if (tray) {
         switch (msg) {
-        case WM_USER + 1:
-            switch (lParam) {
-            case WM_LBUTTONDBLCLK:
-            case WM_LBUTTONUP:
-                if (tray->onOpenCallback) {
-                    tray->onOpenCallback();
-                }
-                break;
-
-            case WM_RBUTTONUP: {
-                POINT pt;
-                GetCursorPos(&pt);
-
-                HMENU hMenu = CreatePopupMenu();
-                AppendMenuW(hMenu, MF_STRING, 1, L"Open NotY-Gemini-MCP");
-                AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
-                AppendMenuW(hMenu, MF_STRING, 2, L"Exit");
-
-                SetForegroundWindow(hwnd);
-                int cmd = TrackPopupMenu(hMenu, TPM_RETURNCMD, pt.x, pt.y, 0, hwnd, NULL);
-
-                if (cmd == 1) {
-                    if (tray->onOpenCallback) {
-                        tray->onOpenCallback();
+            case WM_USER + 1:
+                switch (lParam) {
+                    case WM_LBUTTONDBLCLK:
+                    case WM_LBUTTONUP:
+                        if (tray->onOpenCallback) {
+                            tray->onOpenCallback();
+                        }
+                        break;
+                    
+                    case WM_RBUTTONUP: {
+                        POINT pt;
+                        GetCursorPos(&pt);
+                        
+                        HMENU hMenu = CreatePopupMenu();
+                        AppendMenuW(hMenu, MF_STRING, 1, L"Open NotY-Gemini-MCP");
+                        AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
+                        AppendMenuW(hMenu, MF_STRING, 2, L"Exit");
+                        
+                        SetForegroundWindow(hwnd);
+                        int cmd = TrackPopupMenu(hMenu, TPM_RETURNCMD, pt.x, pt.y, 0, hwnd, NULL);
+                        
+                        if (cmd == 1) {
+                            if (tray->onOpenCallback) {
+                                tray->onOpenCallback();
+                            }
+                        } else if (cmd == 2) {
+                            if (tray->onExitCallback) {
+                                tray->onExitCallback();
+                            }
+                        }
+                        
+                        DestroyMenu(hMenu);
+                        break;
                     }
                 }
-                else if (cmd == 2) {
-                    if (tray->onExitCallback) {
-                        tray->onExitCallback();
-                    }
-                }
-
-                DestroyMenu(hMenu);
                 break;
-            }
-            }
-            break;
-
-        case WM_DESTROY:
-            if (tray->isVisible()) {
-                tray->destroy();
-            }
-            break;
+                
+            case WM_DESTROY:
+                if (tray->isVisible()) {
+                    tray->destroy();
+                }
+                break;
         }
     }
 

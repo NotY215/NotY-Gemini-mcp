@@ -7,8 +7,10 @@
 #include "logger.h"
 #include <nlohmann/json.hpp>
 #include <iostream>
+#include <thread>
+#include <chrono>
 
-// Static member initialization (now public)
+// Static member initialization
 JavaVM* JNIBridge::javaVM = nullptr;
 jobject JNIBridge::javaCallback = nullptr;
 std::unique_ptr<WebServer> JNIBridge::webServer;
@@ -16,44 +18,72 @@ std::unique_ptr<GeminiService> JNIBridge::geminiService;
 std::unique_ptr<ConfigManager> JNIBridge::config;
 std::unique_ptr<VSCodeManager> JNIBridge::vscodeManager;
 std::unique_ptr<Logger> JNIBridge::logger;
+bool JNIBridge::jvmInitialized = false;
 
 bool JNIBridge::initialize(JavaVM* vm) {
-    javaVM = vm;
+    if (jvmInitialized) {
+        logger->info("JVM already initialized");
+        return true;
+    }
 
-    logger = std::make_unique<Logger>("app.log");
-    config = std::make_unique<ConfigManager>();
-    vscodeManager = std::make_unique<VSCodeManager>();
+    javaVM = vm;
+    jvmInitialized = true;
+
+    // Initialize components
+    if (!logger) {
+        logger = std::make_unique<Logger>("app.log");
+    }
+    if (!config) {
+        config = std::make_unique<ConfigManager>();
+    }
+    if (!vscodeManager) {
+        vscodeManager = std::make_unique<VSCodeManager>();
+    }
+
     Encryption::init();
 
     if (!config->load()) {
         config->setDefaults();
     }
 
-    logger->info("JNI Bridge initialized");
+    logger->info("JNI Bridge initialized with JVM");
     return true;
 }
 
 void JNIBridge::setCallback(jobject callback) {
-    JNIEnv* env = nullptr;
-    if (javaVM) {
-        javaVM->AttachCurrentThread((void**)&env, nullptr);
+    if (!javaVM) {
+        logger->error("JavaVM not initialized");
+        return;
     }
-
-    if (javaCallback && env) {
-        env->DeleteGlobalRef(javaCallback);
-    }
-    if (env && callback) {
-        javaCallback = env->NewGlobalRef(callback);
-    }
-}
-
-void JNIBridge::sendToJava(const std::string& event, const std::string& data) {
-    if (!javaCallback || !javaVM) return;
 
     JNIEnv* env = nullptr;
     javaVM->AttachCurrentThread((void**)&env, nullptr);
 
-    if (!env) return;
+    if (!env) {
+        logger->error("Failed to attach thread to JVM");
+        return;
+    }
+
+    if (javaCallback) {
+        env->DeleteGlobalRef(javaCallback);
+    }
+    javaCallback = env->NewGlobalRef(callback);
+    logger->info("Java callback set successfully");
+}
+
+void JNIBridge::sendToJava(const std::string& event, const std::string& data) {
+    if (!javaCallback || !javaVM) {
+        logger->warn("Cannot send to Java: callback not set");
+        return;
+    }
+
+    JNIEnv* env = nullptr;
+    javaVM->AttachCurrentThread((void**)&env, nullptr);
+
+    if (!env) {
+        logger->error("Failed to attach thread to JVM for callback");
+        return;
+    }
 
     jclass callbackClass = env->GetObjectClass(javaCallback);
     jmethodID methodId = env->GetMethodID(callbackClass, "onNativeEvent",
@@ -65,6 +95,8 @@ void JNIBridge::sendToJava(const std::string& event, const std::string& data) {
         env->CallVoidMethod(javaCallback, methodId, jEvent, jData);
         env->DeleteLocalRef(jEvent);
         env->DeleteLocalRef(jData);
+    } else {
+        logger->error("Failed to find onNativeEvent method");
     }
     env->DeleteLocalRef(callbackClass);
 }
@@ -74,18 +106,25 @@ extern "C" {
 
 JNIEXPORT jboolean JNICALL Java_com_noty_geminimcp_NativeBridge_checkVSCode
 (JNIEnv* env, jobject obj) {
-    auto path = JNIBridge::vscodeManager->findInstallation();
-    if (path.has_value()) {
-        JNIBridge::config->setVSCodePath(path.value());
-        nlohmann::json data;
-        data["installed"] = true;
-        data["path"] = path.value();
-        JNIBridge::sendToJava("vscode-status", data.dump());
-        return JNI_TRUE;
-    } else {
-        nlohmann::json data;
-        data["installed"] = false;
-        JNIBridge::sendToJava("vscode-status", data.dump());
+    try {
+        auto path = JNIBridge::vscodeManager->findInstallation();
+        if (path.has_value()) {
+            JNIBridge::config->setVSCodePath(path.value());
+            nlohmann::json data;
+            data["installed"] = true;
+            data["path"] = path.value();
+            JNIBridge::sendToJava("vscode-status", data.dump());
+            JNIBridge::logger->info("VS Code found at: {}", path.value());
+            return JNI_TRUE;
+        } else {
+            nlohmann::json data;
+            data["installed"] = false;
+            JNIBridge::sendToJava("vscode-status", data.dump());
+            JNIBridge::logger->warn("VS Code not found");
+            return JNI_FALSE;
+        }
+    } catch (const std::exception& e) {
+        JNIBridge::logger->error("checkVSCode error: {}", e.what());
         return JNI_FALSE;
     }
 }
@@ -111,11 +150,10 @@ JNIEXPORT jboolean JNICALL Java_com_noty_geminimcp_NativeBridge_saveApiKey
         std::string encrypted = Encryption::encrypt(keyStr);
         JNIBridge::config->setApiKey(encrypted);
         env->ReleaseStringUTFChars(key, keyStr);
+        JNIBridge::logger->info("API key saved successfully");
         return JNI_TRUE;
     } catch (const std::exception& e) {
-        if (JNIBridge::logger) {
-            JNIBridge::logger->error("Failed to save API key: {}", e.what());
-        }
+        JNIBridge::logger->error("Failed to save API key: {}", e.what());
         env->ReleaseStringUTFChars(key, keyStr);
         return JNI_FALSE;
     }
@@ -132,11 +170,15 @@ JNIEXPORT jboolean JNICALL Java_com_noty_geminimcp_NativeBridge_verifyApiKey
         nlohmann::json data;
         data["valid"] = valid;
         JNIBridge::sendToJava("api-key-verified", data.dump());
+
+        if (valid) {
+            JNIBridge::logger->info("API key verified successfully");
+        } else {
+            JNIBridge::logger->error("Invalid API key");
+        }
         return valid ? JNI_TRUE : JNI_FALSE;
     } catch (const std::exception& e) {
-        if (JNIBridge::logger) {
-            JNIBridge::logger->error("Failed to verify API key: {}", e.what());
-        }
+        JNIBridge::logger->error("Failed to verify API key: {}", e.what());
         env->ReleaseStringUTFChars(key, keyStr);
         return JNI_FALSE;
     }
@@ -146,13 +188,19 @@ JNIEXPORT jboolean JNICALL Java_com_noty_geminimcp_NativeBridge_startServer
 (JNIEnv* env, jobject obj) {
     try {
         if (!JNIBridge::geminiService || !JNIBridge::geminiService->isValid()) {
-            if (JNIBridge::logger) {
-                JNIBridge::logger->error("Cannot start server: Gemini service not initialized");
-            }
+            JNIBridge::logger->error("Cannot start server: Gemini service not initialized");
             return JNI_FALSE;
         }
 
+        // Stop existing server if running
+        if (JNIBridge::webServer) {
+            JNIBridge::webServer->stop();
+            JNIBridge::webServer.reset();
+        }
+
         JNIBridge::webServer = std::make_unique<WebServer>(31415);
+
+        // Set up handlers
         JNIBridge::webServer->setChatHandler([](const std::string& msg, const std::string& ctx) {
             if (JNIBridge::geminiService && JNIBridge::geminiService->isValid()) {
                 return JNIBridge::geminiService->sendMessage(msg, ctx);
@@ -177,16 +225,12 @@ JNIEXPORT jboolean JNICALL Java_com_noty_geminimcp_NativeBridge_startServer
         if (JNIBridge::webServer->start()) {
             JNIBridge::config->setServerRunning(true);
             JNIBridge::sendToJava("server-started", "{}");
-            if (JNIBridge::logger) {
-                JNIBridge::logger->info("Server started successfully");
-            }
+            JNIBridge::logger->info("Server started successfully on port 31415");
             return JNI_TRUE;
         }
         return JNI_FALSE;
     } catch (const std::exception& e) {
-        if (JNIBridge::logger) {
-            JNIBridge::logger->error("Failed to start server: {}", e.what());
-        }
+        JNIBridge::logger->error("Failed to start server: {}", e.what());
         return JNI_FALSE;
     }
 }
@@ -200,14 +244,10 @@ JNIEXPORT jboolean JNICALL Java_com_noty_geminimcp_NativeBridge_stopServer
         }
         JNIBridge::config->setServerRunning(false);
         JNIBridge::sendToJava("server-stopped", "{}");
-        if (JNIBridge::logger) {
-            JNIBridge::logger->info("Server stopped");
-        }
+        JNIBridge::logger->info("Server stopped");
         return JNI_TRUE;
     } catch (const std::exception& e) {
-        if (JNIBridge::logger) {
-            JNIBridge::logger->error("Failed to stop server: {}", e.what());
-        }
+        JNIBridge::logger->error("Failed to stop server: {}", e.what());
         return JNI_FALSE;
     }
 }
@@ -275,9 +315,14 @@ JNIEXPORT void JNICALL Java_com_noty_geminimcp_NativeBridge_shutdown
         JNIBridge::webServer.reset();
     }
     JNIBridge::geminiService.reset();
-    if (JNIBridge::logger) {
-        JNIBridge::logger->info("Shutdown complete");
-    }
+    JNIBridge::logger->info("Shutdown complete");
+}
+
+// Native method to start the application from C++
+JNIEXPORT jboolean JNICALL Java_com_noty_geminimcp_NativeBridge_startApp
+(JNIEnv* env, jobject obj) {
+    JNIBridge::logger->info("Application started from C++");
+    return JNI_TRUE;
 }
 
 } // extern "C"
