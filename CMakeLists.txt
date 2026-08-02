@@ -12,16 +12,23 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/${CMAKE_BUILD_TYPE})
 find_package(Java REQUIRED)
 find_package(JNI REQUIRED)
 
-# Find Boost via vcpkg
-find_package(Boost CONFIG REQUIRED COMPONENTS 
-    system 
-    filesystem 
-    json 
-    asio 
-    program_options
-    property_tree
-    beast
-)
+# Find Boost - handle both CONFIG and MODULE modes
+find_package(Boost QUIET)
+if(NOT Boost_FOUND)
+    find_package(Boost CONFIG REQUIRED COMPONENTS
+            system
+            filesystem
+            json
+            asio
+            program_options
+            property_tree
+            beast
+    )
+endif()
+
+if(NOT Boost_FOUND)
+    message(FATAL_ERROR "Boost not found! Please install Boost.")
+endif()
 
 find_package(OpenSSL REQUIRED)
 find_package(CURL REQUIRED)
@@ -31,26 +38,26 @@ find_package(spdlog REQUIRED)
 
 # Source files
 set(SOURCES
-    src/cpp/main.cpp
-    src/cpp/web_server.cpp
-    src/cpp/gemini_service.cpp
-    src/cpp/vscode_manager.cpp
-    src/cpp/encryption.cpp
-    src/cpp/config_manager.cpp
-    src/cpp/logger.cpp
-    src/cpp/jni_bridge.cpp
-    src/cpp/tray_icon.cpp
+        src/cpp/main.cpp
+        src/cpp/web_server.cpp
+        src/cpp/gemini_service.cpp
+        src/cpp/vscode_manager.cpp
+        src/cpp/encryption.cpp
+        src/cpp/config_manager.cpp
+        src/cpp/logger.cpp
+        src/cpp/jni_bridge.cpp
+        src/cpp/tray_icon.cpp
 )
 
 set(HEADERS
-    src/cpp/web_server.h
-    src/cpp/gemini_service.h
-    src/cpp/vscode_manager.h
-    src/cpp/encryption.h
-    src/cpp/config_manager.h
-    src/cpp/logger.h
-    src/cpp/jni_bridge.h
-    src/cpp/tray_icon.h
+        src/cpp/web_server.h
+        src/cpp/gemini_service.h
+        src/cpp/vscode_manager.h
+        src/cpp/encryption.h
+        src/cpp/config_manager.h
+        src/cpp/logger.h
+        src/cpp/jni_bridge.h
+        src/cpp/tray_icon.h
 )
 
 # Executable
@@ -58,58 +65,68 @@ add_executable(${PROJECT_NAME} WIN32 ${SOURCES} ${HEADERS})
 
 # Include directories
 target_include_directories(${PROJECT_NAME} PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp
-    ${JNI_INCLUDE_DIRS}
-    ${Boost_INCLUDE_DIRS}
-    ${OPENSSL_INCLUDE_DIR}
-    ${CURL_INCLUDE_DIRS}
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/cpp
+        ${JNI_INCLUDE_DIRS}
+        ${Boost_INCLUDE_DIRS}
+        ${OPENSSL_INCLUDE_DIR}
+        ${CURL_INCLUDE_DIRS}
 )
 
 # Link libraries
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    ${Boost_LIBRARIES}
-    ${OPENSSL_LIBRARIES}
-    ${CURL_LIBRARIES}
-    nlohmann_json::nlohmann_json
-    fmt::fmt
-    spdlog::spdlog
-    ${JNI_LIBRARIES}
+        ${Boost_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${CURL_LIBRARIES}
+        nlohmann_json::nlohmann_json
+        fmt::fmt
+        spdlog::spdlog
+        ${JNI_LIBRARIES}
 )
 
 # Windows specific
 if(WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE
-        ws2_32
-        winhttp
-        crypt32
-        shell32
-        user32
-        advapi32
-        shlwapi
-        version
+            ws2_32
+            winhttp
+            crypt32
+            shell32
+            user32
+            advapi32
+            shlwapi
+            version
+            comctl32
+            ole32
+            oleaut32
     )
     target_compile_definitions(${PROJECT_NAME} PRIVATE
-        WIN32
-        _WIN32
-        _WINDOWS
-        NOMINMAX
-        _CRT_SECURE_NO_WARNINGS
-        _WIN32_WINNT=0x0A00
+            WIN32
+            _WIN32
+            _WINDOWS
+            NOMINMAX
+            _CRT_SECURE_NO_WARNINGS
+            _WIN32_WINNT=0x0A00
     )
 endif()
 
-# Copy Java JAR to output directory
+# Add resource file if exists
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/resources/icon.rc)
+    target_sources(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/resources/icon.rc)
+endif()
+
+# Copy files to output
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_CURRENT_SOURCE_DIR}/build/libs
-    ${CMAKE_CURRENT_BINARY_DIR}/bin/${CMAKE_BUILD_TYPE}
-    COMMENT "Copying Java JAR files"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/resources
+        ${CMAKE_CURRENT_BINARY_DIR}/bin/${CMAKE_BUILD_TYPE}
+        COMMENT "Copying resources"
 )
 
-# Copy resources
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_CURRENT_SOURCE_DIR}/resources
-    ${CMAKE_CURRENT_BINARY_DIR}/bin/${CMAKE_BUILD_TYPE}
-    COMMENT "Copying resources"
-)
+# For CLion - copy DLLs to build directory
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/x64-windows/bin)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/x64-windows/bin/*.dll
+            ${CMAKE_CURRENT_BINARY_DIR}/bin/${CMAKE_BUILD_TYPE}
+            COMMENT "Copying vcpkg DLLs"
+    )
+endif()

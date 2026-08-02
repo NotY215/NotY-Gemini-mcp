@@ -7,3 +7,4 @@
 /.gradle
 .idea/*.xml
 .idea/editor.xml
+/bin

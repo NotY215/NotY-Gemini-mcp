@@ -1,13 +1,34 @@
-<RCC>
-    <qresource prefix="/">
-        <file>ui/main.qml</file>
-        <file>ui/VSCodeSetup.qml</file>
-        <file>ui/ApiKeySetup.qml</file>
-        <file>ui/ServerControl.qml</file>
-        <file>ui/TermsDialog.qml</file>
-        <file>ui/ToastNotification.qml</file>
-        <file>ui/styles/Theme.qml</file>
-        <file>resources/icon.png</file>
-        <file>resources/tray-icon.png</file>
-    </qresource>
-</RCC>
+#include <windows.h>
+
+// Icon
+IDI_MAIN_ICON ICON "icon.ico"
+
+// Version Information
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     1,0,0,0
+PRODUCTVERSION  1,0,0,0
+FILEFLAGSMASK   0x3fL
+FILEFLAGS       0x0L
+FILEOS          VOS_NT_WINDOWS32
+FILETYPE        VFT_APP
+FILESUBTYPE     0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName", "NotY215/Fliczo"
+            VALUE "FileDescription", "NotY-Gemini-MCP"
+            VALUE "FileVersion", "1.0.0.0"
+            VALUE "InternalName", "NotYGeminiMCP"
+            VALUE "LegalCopyright", "Copyright (C) 2024 NotY215/Fliczo"
+            VALUE "OriginalFilename", "NotYGeminiMCP.exe"
+            VALUE "ProductName", "NotY-Gemini-MCP"
+            VALUE "ProductVersion", "1.0.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
